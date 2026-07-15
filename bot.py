@@ -55,7 +55,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Kenji está procesando los enlaces en la nube...")
 
-    # Opciones flexibles para evitar restricciones de formato y cliente en YouTube
+    # Configuración de yt-dlp con soporte opcional para cookies si el archivo existe
     ydl_opts = {
         'format': 'best/bestvideo+bestaudio/b',
         'noplaylist': True,
@@ -66,6 +66,10 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         },
     }
+
+    # Si subes un archivo cookies.txt a tu repositorio, lo usará automáticamente para evitar el bloqueo
+    if os.path.exists('cookies.txt'):
+        ydl_opts['cookiefile'] = 'cookies.txt'
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -95,7 +99,6 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔗 Enlace directo (Con Audio):\n{direct_url}"
         )
 
-        # Se envía sin parse_mode para evitar que caracteres especiales rompan el mensaje
         await status_msg.edit_text(response_text, disable_web_page_preview=False)
 
     except Exception as e:
