@@ -1,7 +1,13 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    CommandHandler,
+    MessageHandler,
+    filters,
+)
 import yt_dlp
 
 # Configurar logs
@@ -10,19 +16,35 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_text = (
-        "🤖 ¡Bienvenida eli a tu kenjibot! 🚀\n\n"
-        "Estoy listo para ayudarte a extraer enlaces directos con audio y video integrados, compatibles con iPhone y PC, sin límites de peso por tamaño de archivo.\n\n"
-        "📖 Guía de Comandos Disponibles:\n"
-        "• /start - Muestra este mensaje de bienvenida.\n"
-        "• /help - Muestra la guía de ayuda y los ejemplos de uso.\n"
-        "• /download <enlace> - Extrae el enlace directo de streaming y descarga.\n\n"
-        "💡 Ejemplo de uso: /download https://youtube.com/watch?v=tu_video"
+# Guarda los chat_id que ya recibieron el mensaje de bienvenida,
+# para saber cuándo es el "primer mensaje" de alguien.
+usuarios_conocidos = set()
+
+COMANDOS_TEXT = (
+    "📖 Guía de Comandos Disponibles:\n"
+    "• /start - Muestra este mensaje de bienvenida.\n"
+    "• /help - Muestra la guía de ayuda y los ejemplos de uso.\n"
+    "• /download <enlace> - Extrae el enlace directo de streaming y descarga.\n\n"
+    "💡 Ejemplo de uso: /download https://youtube.com/watch?v=tu_video"
+)
+
+
+def bienvenida_text():
+    return (
+        "🐱 ¡Miau! Soy Kenji, un gatito bot que ama a Eli con todo su corazón. 💕\n\n"
+        "Estoy listo para ayudarte a extraer enlaces directos con audio y video integrados, "
+        "compatibles con iPhone y PC, sin límites de peso por tamaño de archivo.\n\n"
+        f"{COMANDOS_TEXT}"
     )
-    await update.message.reply_text(welcome_text)
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    usuarios_conocidos.add(update.effective_chat.id)
+    await update.message.reply_text(bienvenida_text())
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    usuarios_conocidos.add(update.effective_chat.id)
     help_text = (
         "🛠 Guía de Ayuda y Uso del Bot\n\n"
         "1️⃣ ¿Cómo descargar un video?\n"
@@ -35,7 +57,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(help_text)
 
+
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    usuarios_conocidos.add(update.effective_chat.id)
+
     if not context.args:
         await update.message.reply_text(
             "❌ Falta el enlace.\nEjemplo correcto:\n/download https://youtube.com/watch?v=..."
@@ -56,11 +81,11 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            
+
             title = info.get('title', 'Video sin título')
             duration_sec = info.get('duration', 0)
             duration_min = round(duration_sec / 60, 1)
-            
+
             direct_url = info.get('url')
             if not direct_url and 'formats' in info:
                 for f in info.get('formats', []):
@@ -86,14 +111,31 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await status_msg.edit_text(f"❌ Ocurrió un error al procesar el enlace: {str(e)}")
 
+
+async def mensaje_general(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Se dispara con cualquier texto que no sea uno de los comandos reconocidos.
+    Si es el primer mensaje de ese chat, responde con la bienvenida completa."""
+    chat_id = update.effective_chat.id
+
+    if chat_id not in usuarios_conocidos:
+        usuarios_conocidos.add(chat_id)
+        await update.message.reply_text(bienvenida_text())
+    else:
+        await update.message.reply_text(
+            "🐾 No entendí ese mensaje. Aquí tienes de nuevo mis comandos:\n\n" + COMANDOS_TEXT
+        )
+
+
 if __name__ == '__main__':
-    TOKEN = os.getenv("TOKEN", "8723783721:AAFIicHnrSrEB5YVurEasSxIN3R_OdrRaLU")
-    
+    # ⚠️ Usa una variable de entorno para el token. No lo dejes escrito en el código.
+    TOKEN = os.getenv("TOKEN", "TU_TOKEN_AQUI")
+
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("download", download_video))
-    
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, mensaje_general))
+
     print("Bot en ejecución...")
     app.run_polling()
