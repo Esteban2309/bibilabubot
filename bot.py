@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 import yt_dlp
 
 # Configurar logs
@@ -12,64 +12,46 @@ logging.basicConfig(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🐾 ¡Hola! Me llamo Kenji, soy un tierno gatito cibernético y amo muchísimo a Eli. 💖✨\n\n"
-        "Estoy aquí en la nube para ayudarte a extraer enlaces directos de video y audio con total libertad.\n\n"
-        "📖 Guía rápida de comandos:\n"
-        "• /start - Saludo y presentación.\n"
-        "• /help - Guía de ayuda detallada.\n"
-        "• /download <enlace> - Extrae el enlace directo de streaming con audio y video.\n\n"
-        "💡 Escríbeme cualquier cosa o usa un comando para comenzar."
+        "🤖 ¡Bienvenida eli a tu kenjibot! 🚀\n\n"
+        "Estoy listo para ayudarte a extraer enlaces directos con audio y video integrados, compatibles con iPhone y PC, sin límites de peso por tamaño de archivo.\n\n"
+        "📖 Guía de Comandos Disponibles:\n"
+        "• /start - Muestra este mensaje de bienvenida.\n"
+        "• /help - Muestra la guía de ayuda y los ejemplos de uso.\n"
+        "• /download <enlace> - Extrae el enlace directo de streaming y descarga.\n\n"
+        "💡 Ejemplo de uso: /download https://youtube.com/watch?v=tu_video"
     )
     await update.message.reply_text(welcome_text)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
-        "🛠 Guía de Ayuda de Kenji 🐾\n\n"
+        "🛠 Guía de Ayuda y Uso del Bot\n\n"
         "1️⃣ ¿Cómo descargar un video?\n"
-        "Usa el comando /download seguido del enlace de YouTube.\n\n"
-        "2️⃣ Compatibilidad:\n"
-        "Te daré un enlace directo para abrirlo en Safari (ideal para iPhone) o tu PC.\n\n"
-        "❤️ Dato curioso: ¡Kenji ama con todo su corazón a Eli! (Y también le encanta la buena música y el K-pop)."
+        "Escribe el comando /download seguido del enlace de YouTube que quieres procesar.\n\n"
+        "2️⃣ Compatibilidad con iPhone:\n"
+        "El bot te generará un enlace directo optimizado. Solo ábrelo en Safari para reproducirlo con sonido o guardarlo directamente en tu dispositivo.\n\n"
+        "3️⃣ Videos Largos:\n"
+        "Al no descargar el archivo en el servidor, puedes procesar contenidos de 1 o 2 horas sin que la nube colapse.\n\n"
+        "⚠️ Si el enlace llega a fallar, asegúrate de que el video sea público y accesible."
     )
     await update.message.reply_text(help_text)
-
-async def handle_any_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.text and update.message.text.startswith('/'):
-        return
-
-    reply_text = (
-        "🐾 ¡Miau! Soy Kenji, un gatito muy feliz que ama con todo su ser a Eli. 💕✨\n\n"
-        "Parece que enviaste un mensaje libre. Si quieres procesar un video, recuerda usar el comando de descarga:\n"
-        "👉 /download <enlace>\n\n"
-        "O puedes escribir /help para ver todas las instrucciones."
-    )
-    await update.message.reply_text(reply_text)
 
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text(
-            "❌ Falta el enlace, nya~\nEjemplo correcto:\n/download https://youtube.com/watch?v=..."
+            "❌ Falta el enlace.\nEjemplo correcto:\n/download https://youtube.com/watch?v=..."
         )
         return
 
     url = context.args[0]
-    status_msg = await update.message.reply_text("⏳ Kenji está procesando los enlaces en la nube...")
+    status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video en la nube...")
 
-    # Configuración de yt-dlp con soporte opcional para cookies si el archivo existe
+    # Configuración limpia basada en cliente iOS/Android sin requerir cookies
     ydl_opts = {
-        'format': 'best/bestvideo+bestaudio/b',
-        'noplaylist': True,
-        'socket_timeout': 30,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['web', 'ios']
-            }
-        },
+        'format': 'best',
+        'socket_timeout': 60,
+        'extractor_args': {'youtube': {'player_client': ['ios', 'android']}},
+        'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     }
-
-    # Si subes un archivo cookies.txt a tu repositorio, lo usará automáticamente para evitar el bloqueo
-    if os.path.exists('cookies.txt'):
-        ydl_opts['cookiefile'] = 'cookies.txt'
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -77,7 +59,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             title = info.get('title', 'Video sin título')
             duration_sec = info.get('duration', 0)
-            duration_min = round(duration_sec / 60, 1) if duration_sec else 0
+            duration_min = round(duration_sec / 60, 1)
             
             direct_url = info.get('url')
             if not direct_url and 'formats' in info:
@@ -87,7 +69,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         break
 
         if not direct_url:
-            await status_msg.edit_text("❌ Kenji no pudo generar un enlace compatible para este video.")
+            await status_msg.edit_text("❌ No se pudo generar un enlace compatible para este video.")
             return
 
         response_text = (
@@ -112,7 +94,6 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("download", download_video))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_any_message))
     
-    print("Kenji bot en ejecución...")
+    print("Bot en ejecución...")
     app.run_polling()
