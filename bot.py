@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 import yt_dlp
 
 # Configurar logs
@@ -12,40 +12,51 @@ logging.basicConfig(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🤖 ¡Bienvenido a tu Bot de Descargas en la Nube! 🚀\n\n"
-        "Estoy listo para ayudarte a extraer enlaces directos con audio y video integrados, compatibles con iPhone y PC, sin límites de peso por tamaño de archivo.\n\n"
-        "📖 Guía de Comandos Disponibles:\n"
-        "• /start - Muestra este mensaje de bienvenida.\n"
-        "• /help - Muestra la guía de ayuda y los ejemplos de uso.\n"
-        "• /download <enlace> - Extrae el enlace directo de streaming y descarga.\n\n"
-        "💡 Ejemplo de uso: /download https://youtube.com/watch?v=tu_video"
+        "🐾 ¡Hola! Me llamo **Kenji**, soy un tierno gatito cibernético y amo muchísimo a Eli. 🖤✨\n\n"
+        "Estoy aquí en la nube para ayudarte a extraer enlaces directos de video y audio con total libertad.\n\n"
+        "📖 **Guía rápida de comandos:**\n"
+        "• `/start` - Saludo y presentación.\n"
+        "• `/help` - Guía de ayuda detallada.\n"
+        "• `/download <enlace>` - Extrae el enlace directo de streaming con audio y video.\n\n"
+        "💡 *Escríbeme cualquier cosa o usa un comando para comenzar.*"
     )
-    await update.message.reply_text(welcome_text)
+    await update.message.reply_text(welcome_text, parse_mode='Markdown')
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = (
-        "🛠 Guía de Ayuda y Uso del Bot\n\n"
-        "1️⃣ ¿Cómo descargar un video?\n"
-        "Escribe el comando /download seguido del enlace de YouTube que quieres procesar.\n\n"
-        "2️⃣ Compatibilidad con iPhone:\n"
-        "El bot te generará un enlace directo optimizado. Solo ábrelo en Safari para reproducirlo con sonido o guardarlo directamente en tu dispositivo.\n\n"
-        "3️⃣ Videos Largos:\n"
-        "Al no descargar el archivo en el servidor, puedes procesar contenidos de 1 o 2 horas sin que la nube colapse.\n\n"
-        "⚠️ Si el enlace llega a fallar, asegúrate de que el video sea público y accesible."
+        "🛠 **Guía de Ayuda de Kenji** 🐾\n\n"
+        "1️⃣ **¿Cómo descargar un video?**\n"
+        "Usa el comando `/download` seguido del enlace de YouTube.\n\n"
+        "2️⃣ **Compatibilidad:**\n"
+        "Te daré un enlace directo para abrirlo en Safari (ideal para iPhone) o tu PC.\n\n"
+        "🖤 *Dato curioso:* ¡Kenji ama con todo su corazón a Eli! (Y también le encanta la buena música y el K-pop)."
     )
-    await update.message.reply_text(help_text)
+    await update.message.reply_text(help_text, parse_mode='Markdown')
+
+async def handle_any_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Ignorar si es un comando para que no interfiera
+    if update.message.text and update.message.text.startswith('/'):
+        return
+
+    reply_text = (
+        "🐾 ¡Miau! Soy **Kenji**, un gatito muy feliz que ama con todo su ser a Eli. 🖤✨\n\n"
+        "Parece que enviaste un mensaje libre. Si quieres procesar un video, recuerda usar el comando de descarga:\n"
+        "👉 `/download <enlace>`\n\n"
+        "O puedes escribir `/help` para ver todas las instrucciones."
+    )
+    await update.message.reply_text(reply_text, parse_mode='Markdown')
 
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text(
-            "❌ Falta el enlace.\nEjemplo correcto:\n/download https://youtube.com/watch?v=..."
+            "❌ Falta el enlace, nya~\nEjemplo correcto:\n`/download https://youtube.com/watch?v=...`",
+            parse_mode='Markdown'
         )
         return
 
     url = context.args[0]
-    status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video en la nube...")
+    status_msg = await update.message.reply_text("⏳ Kenji está procesando los enlaces en la nube...")
 
-    # Configuración limpia basada en cliente iOS/Android sin requerir cookies
     ydl_opts = {
         'format': 'best',
         'socket_timeout': 60,
@@ -69,19 +80,19 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         break
 
         if not direct_url:
-            await status_msg.edit_text("❌ No se pudo generar un enlace compatible para este video.")
+            await status_msg.edit_text("❌ Kenji no pudo generar un enlace compatible para este video.")
             return
 
         response_text = (
-            f"🎬 {title}\n"
+            f"🎬 **{title}**\n"
             f"⏱ Duración: {duration_min} min\n\n"
-            f"📲 Instrucciones para iPhone / PC:\n"
+            f"📲 **Instrucciones para iPhone / PC:**\n"
             f"1. Abre el enlace en tu navegador (Safari/Chrome).\n"
             f"2. Disfruta de la reproducción con audio o descárgalo directamente.\n\n"
-            f"🔗 Enlace directo (Con Audio):\n{direct_url}"
+            f"🔗 **Enlace directo (Con Audio):**\n{direct_url}"
         )
 
-        await status_msg.edit_text(response_text, disable_web_page_preview=False)
+        await status_msg.edit_text(response_text, disable_web_page_preview=False, parse_mode='Markdown')
 
     except Exception as e:
         await status_msg.edit_text(f"❌ Ocurrió un error al procesar el enlace: {str(e)}")
@@ -91,9 +102,13 @@ if __name__ == '__main__':
     
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # Comandos
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("download", download_video))
     
-    print("Bot en ejecución...")
+    # Manejador para cualquier otro mensaje de texto que no sea un comando
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_any_message))
+    
+    print("Kenji bot en ejecución...")
     app.run_polling()
