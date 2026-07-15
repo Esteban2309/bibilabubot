@@ -56,14 +56,14 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Kenji está procesando los enlaces en la nube...")
 
-    # Usamos el cliente tv_embedded y web para evitar por completo el bloqueo antibot de YouTube
+    # Configuración de respaldo segura para evitar el error de formatos no disponibles
     ydl_opts = {
-        'format': 'best',
+        'format': 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4] / best',
         'noplaylist': True,
         'socket_timeout': 30,
         'extractor_args': {
             'youtube': {
-                'player_client': ['tv_embedded', 'web']
+                'player_client': ['android', 'web']
             }
         },
     }
