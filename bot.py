@@ -11,35 +11,62 @@ logging.basicConfig(
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('¡Hola! Envía /download <enlace> para obtener tu enlace compatible con iPhone 🚀')
+    welcome_text = (
+        "🤖 **¡Bienvenido a tu Bot de Descargas en la Nube!** 🚀\n\n"
+        "Estoy listo para ayudarte a extraer enlaces directos con audio y video integrados, compatibles con iPhone y PC, sin límites de peso por tamaño de archivo.\n\n"
+        "📖 **Guía de Comandos Disponibles:**\n"
+        "• /start - Muestra este mensaje de bienvenida.\n"
+        "• /help - Muestra la guía de ayuda y los ejemplos de uso.\n"
+        "• /download `<enlace>` - Extrae el enlace directo de streaming y descarga.\n\n"
+        "💡 *Ejemplo de uso:* `/download https://youtube.com/watch?v=tu_video`"
+    )
+    await update.message.reply_text(welcome_text, parse_mode='Markdown')
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = (
+        "🛠 **Guía de Ayuda y Uso del Bot**\n\n"
+        "1️⃣ **¿Cómo descargar un video?**\n"
+        "Escribe el comando `/download` seguido del enlace de YouTube que quieres procesar.\n\n"
+        "2️⃣ **Compatibilidad con iPhone:**\n"
+        "El bot te generará un enlace directo optimizado. Solo ábrelo en **Safari** para reproducirlo con sonido o guardarlo directamente en tu dispositivo.\n\n"
+        "3️⃣ **Videos Largos:**\n"
+        "Al no descargar el archivo en el servidor, puedes procesar contenidos de 1 o 2 horas sin que la nube colapse.\n\n"
+        "⚠️ *Si el enlace llega a fallar, asegúrate de que el video sea público y accesible.*"
+    )
+    await update.message.reply_text(help_text, parse_mode='Markdown')
 
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Por favor, envía un enlace. Ejemplo: /download https://youtube.com/watch?v=...")
+        await update.message.reply_text(
+            "❌ **Falta el enlace.**\nEjemplo correcto:\n`/download https://youtube.com/watch?v=...`",
+            parse_mode='Markdown'
+        )
         return
 
     url = context.args[0]
-    status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video...")
+    status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video en la nube...")
 
-    # yt-dlp configurado para buscar formatos con audio y video integrados (evita videos mudos)
+    # Opciones de yt-dlp con cookies (si subiste el archivo cookies.txt) y user-agent móvil
     ydl_opts = {
-        'format': 'best[ext=mp4]/best',  # Prioriza MP4 nativo para iOS
+        'format': 'best[ext=mp4]/best',
         'socket_timeout': 60,
         'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
     }
 
+    # Si subiste un archivo cookies.txt a Railway, lo incluimos automáticamente
+    if os.path.exists('cookies.txt'):
+        ydl_opts['cookiefile'] = 'cookies.txt'
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = yt_dlp.YoutubeDL({'socket_timeout': 60}).extract_info(url, download=False)
+            info = ydl.extract_info(url, download=False)
             
             title = info.get('title', 'Video sin título')
             duration_sec = info.get('duration', 0)
             duration_min = round(duration_sec / 60, 1)
             
-            # Extraer URL directa asegurando compatibilidad móvil
+            # Buscar formato optimizado con audio y video integrados
             direct_url = info.get('url')
-            
-            # Si el formato principal no da la URL directa, buscamos en los formatos disponibles uno con audio y video
             for f in info.get('formats', []):
                 if f.get('url') and f.get('ext') == 'mp4' and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
                     direct_url = f.get('url')
@@ -47,31 +74,23 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         break
 
         if not direct_url:
-            await status_msg.edit_text("❌ No se pudo generar un enlace compatible.")
+            await status_msg.edit_text("❌ No se pudo generar un enlace compatible para este video.")
             return
 
-        # Respuesta estructurada para iPhone y Telegram
+        # Respuesta estructurada limpia
         response_text = (
-            f"🍏 **{title}**\n"
+            f"🎬 **{title}**\n"
             f"⏱ Duración: {duration_min} min\n\n"
-            f"📲 **Instrucciones para iPhone:**\n"
-            f"1. Abre el enlace en **Safari**.\n"
-            f"2. Mantén presionado el reproductor o usa el botón de descargas para guardarlo en tu carrete.\n\n"
+            f"📲 **Instrucciones para iPhone / PC:**\n"
+            f"1. Abre el enlace en tu navegador (Safari/Chrome).\n"
+            f"2. Disfruta de la reproducción con audio o descárgalo directamente.\n\n"
             f"🔗 **Enlace directo (Con Audio):**\n{direct_url}"
         )
 
-        await status_msg.edit_text(response_text, disable_web_page_preview=False)
+        await status_msg.edit_text(response_text, disable_web_page_preview=False, parse_mode='Markdown')
 
     except Exception as e:
-        await status_msg.edit_text(f"❌ Ocurrió un error: {str(e)}")
+        await status_msg.edit_text(f"❌ Ocurrió un error al procesar el enlace: {str(e)}")
 
 if __name__ == '__main__':
-    TOKEN = os.getenv("TOKEN", "8723783721:AAFIicHnrSrEB5YVurEasSxIN3R_OdrRaLU")
-    
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("download", download_video))
-    
-    print("Bot en ejecución...")
-    app.run_polling()
+    TOKEN = os.getenv("TOKEN", "8723783721:AAFIicHnrSrEB5YVurEasSxIN3R_O
