@@ -21,11 +21,12 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Procesando video en la nube...")
 
-    # Opciones de yt-dlp optimizadas para rendimiento en servidores
+    # Opciones de yt-dlp optimizadas para servidores y evitar bloqueos
     ydl_opts = {
         'format': 'best[height<=720]',  # 720p para equilibrar calidad y peso
         'outtmpl': 'downloads/%(id)s.%(ext)s',
         'socket_timeout': 60,
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
 
     filename = None
@@ -64,7 +65,6 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             os.remove(filename)
 
 if __name__ == '__main__':
-    # Aquí puedes usar tu token directamente o configurarlo mediante una variable de entorno en la nube
     TOKEN = os.getenv("TOKEN", "8723783721:AAFIicHnrSrEB5YVurEasSxIN3R_OdrRaLU")
     
     app = ApplicationBuilder().token(TOKEN).build()
