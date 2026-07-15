@@ -34,7 +34,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
 async def handle_any_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Ignorar si es un comando para que no interfiera
     if update.message.text and update.message.text.startswith('/'):
         return
 
@@ -57,12 +56,12 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Kenji está procesando los enlaces en la nube...")
 
-    # Configuración enfocada en saltar restricciones de inicio de sesión mediante cliente android puro
+    # Configuración robusta para evitar errores de formatos bloqueados en YouTube
     ydl_opts = {
         'format': 'best',
-        'socket_timeout': 60,
-        'extractor_args': {'youtube': {'player_client': ['android']}},
-        'user_agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+        'noplaylist': True,
+        'socket_timeout': 30,
+        'extractor_args': {'youtube': {'player_client': ['web']}},
     }
 
     try:
@@ -71,7 +70,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             title = info.get('title', 'Video sin título')
             duration_sec = info.get('duration', 0)
-            duration_min = round(duration_sec / 60, 1)
+            duration_min = round(duration_sec / 60, 1) if duration_sec else 0
             
             direct_url = info.get('url')
             if not direct_url and 'formats' in info:
@@ -103,12 +102,9 @@ if __name__ == '__main__':
     
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Comandos
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("download", download_video))
-    
-    # Manejador para cualquier otro mensaje de texto que no sea un comando
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_any_message))
     
     print("Kenji bot en ejecución...")
