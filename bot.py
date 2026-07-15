@@ -46,14 +46,12 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video en la nube...")
 
-    # Opciones de yt-dlp con cookies (si subiste el archivo cookies.txt) y user-agent móvil
     ydl_opts = {
         'format': 'best[ext=mp4]/best',
         'socket_timeout': 60,
         'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
     }
 
-    # Si subiste un archivo cookies.txt a Railway, lo incluimos automáticamente
     if os.path.exists('cookies.txt'):
         ydl_opts['cookiefile'] = 'cookies.txt'
 
@@ -65,7 +63,6 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             duration_sec = info.get('duration', 0)
             duration_min = round(duration_sec / 60, 1)
             
-            # Buscar formato optimizado con audio y video integrados
             direct_url = info.get('url')
             for f in info.get('formats', []):
                 if f.get('url') and f.get('ext') == 'mp4' and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
@@ -77,7 +74,6 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await status_msg.edit_text("❌ No se pudo generar un enlace compatible para este video.")
             return
 
-        # Respuesta estructurada limpia
         response_text = (
             f"🎬 **{title}**\n"
             f"⏱ Duración: {duration_min} min\n\n"
@@ -93,4 +89,13 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_msg.edit_text(f"❌ Ocurrió un error al procesar el enlace: {str(e)}")
 
 if __name__ == '__main__':
-    TOKEN = os.getenv("TOKEN", "8723783721:AAFIicHnrSrEB5YVurEasSxIN3R_O
+    TOKEN = os.getenv("TOKEN", "8723783721:AAFIicHnrSrEB5YVurEasSxIN3R_OdrRaLU")
+    
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("download", download_video))
+    
+    print("Bot en ejecución...")
+    app.run_polling()
