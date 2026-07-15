@@ -12,7 +12,7 @@ logging.basicConfig(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🐾 ¡Hola! Me llamo **Kenji**, soy un tierno gatito cibernético y amo muchísimo a Eli. 🖤✨\n\n"
+        "🐾 ¡Hola! Me llamo **Kenji**, soy un tierno gatito cibernético y amo muchísimo a Eli. 💖✨\n\n"
         "Estoy aquí en la nube para ayudarte a extraer enlaces directos de video y audio con total libertad.\n\n"
         "📖 **Guía rápida de comandos:**\n"
         "• `/start` - Saludo y presentación.\n"
@@ -29,7 +29,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Usa el comando `/download` seguido del enlace de YouTube.\n\n"
         "2️⃣ **Compatibilidad:**\n"
         "Te daré un enlace directo para abrirlo en Safari (ideal para iPhone) o tu PC.\n\n"
-        "🖤 *Dato curioso:* ¡Kenji ama con todo su corazón a Eli! (Y también le encanta la buena música y el K-pop)."
+        "❤️ *Dato curioso:* ¡Kenji ama con todo su corazón a Eli! (Y también le encanta la buena música y el K-pop)."
     )
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
@@ -39,7 +39,7 @@ async def handle_any_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     reply_text = (
-        "🐾 ¡Miau! Soy **Kenji**, un gatito muy feliz que ama con todo su ser a Eli. 🖤✨\n\n"
+        "🐾 ¡Miau! Soy **Kenji**, un gatito muy feliz que ama con todo su ser a Eli. 💕✨\n\n"
         "Parece que enviaste un mensaje libre. Si quieres procesar un video, recuerda usar el comando de descarga:\n"
         "👉 `/download <enlace>`\n\n"
         "O puedes escribir `/help` para ver todas las instrucciones."
@@ -57,11 +57,12 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Kenji está procesando los enlaces en la nube...")
 
+    # Configuración enfocada en saltar restricciones de inicio de sesión mediante cliente android puro
     ydl_opts = {
         'format': 'best',
         'socket_timeout': 60,
-        'extractor_args': {'youtube': {'player_client': ['ios', 'android']}},
-        'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        'extractor_args': {'youtube': {'player_client': ['android']}},
+        'user_agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     }
 
     try:
