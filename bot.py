@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('¡Hola! Envía /download <enlace> para procesar tu video 🚀')
+    await update.message.reply_text('¡Hola! Envía /download <enlace> para obtener el link directo de tu video 🚀')
 
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -19,50 +19,52 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     url = context.args[0]
-    status_msg = await update.message.reply_text("⏳ Procesando video en la nube...")
+    status_msg = await update.message.reply_text("⏳ Analizando video y generando enlace...")
 
-    # Opciones de yt-dlp optimizadas para servidores y evitar bloqueos
+    # Opciones para extraer información y enlaces directos sin descargar el archivo al servidor
     ydl_opts = {
-        'format': 'best[height<=720]',  # 720p para equilibrar calidad y peso
-        'outtmpl': 'downloads/%(id)s.%(ext)s',
+        'format': 'best',
         'socket_timeout': 60,
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
 
-    filename = None
     try:
-        os.makedirs('downloads', exist_ok=True)
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
+            # Extraemos los datos sin descargar físicamente
+            info = ydl.extract_info(url, download=False)
+            
+            title = info.get('title', 'Video sin título')
+            duration_sec = info.get('duration', 0)
+            duration_min = round(duration_sec / 60, 1)
+            
+            # Buscamos un enlace directo de descarga/reproducción de la lista de formatos
+            direct_url = None
+            for f in info.get('formats', []):
+                # Buscamos formato con video y audio combinados o directo accesible
+                if f.get('url') and f.get('ext') == 'mp4' and f.get('height'):
+                    direct_url = f.get('url')
+                    if f.get('height') <= 720: # Preferiblemente 720p o menor para ligereza
+                        break
 
-        file_size_mb = os.path.getsize(filename) / (1024 * 1024)
-        
-        # Validación estricta del límite de la API de Telegram (50MB)
-        if file_size_mb > 50:
-            await status_msg.edit_text(f"❌ El video pesa {file_size_mb:.1f}MB. Supera el límite de 50MB que permite la API de Telegram para bots.")
-            if os.path.exists(filename):
-                os.remove(filename)
+            # Si no encontró un mp4 exacto, tomamos la URL principal del info
+            if not direct_url:
+                direct_url = info.get('url')
+
+        if not direct_url:
+            await status_msg.edit_text("❌ No se pudo extraer un enlace directo para este video.")
             return
 
-        await status_msg.edit_text("📤 Subiendo video al chat...")
+        # Mensaje con la información y el enlace directo limpio
+        response_text = (
+            f"🎬 **{title}**\n"
+            f"⏱ Duración: {duration_min} minutos\n\n"
+            f"🔗 **Enlace de reproducción/descarga directa:**\n{direct_url}"
+        )
 
-        with open(filename, 'rb') as video_file:
-            await update.message.reply_video(
-                video=video_file,
-                caption=f"🎥 {info.get('title', 'Video')}"
-            )
-
-        if os.path.exists(filename):
-            os.remove(filename)
-
-        await status_msg.delete()
+        await status_msg.edit_text(response_text, disable_web_page_preview=False)
 
     except Exception as e:
         await status_msg.edit_text(f"❌ Ocurrió un error: {str(e)}")
-        if filename and os.path.exists(filename):
-            os.remove(filename)
 
 if __name__ == '__main__':
     TOKEN = os.getenv("TOKEN", "8723783721:AAFIicHnrSrEB5YVurEasSxIN3R_OdrRaLU")
