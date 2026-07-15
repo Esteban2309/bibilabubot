@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('¡Hola! Envía /download <enlace> para obtener el link directo de tu video 🚀')
+    await update.message.reply_text('¡Hola! Envía /download <enlace> para obtener tu enlace compatible con iPhone 🚀')
 
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -19,46 +19,45 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     url = context.args[0]
-    status_msg = await update.message.reply_text("⏳ Analizando video y generando enlace...")
+    status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video...")
 
-    # Opciones para extraer información y enlaces directos sin descargar el archivo al servidor
+    # yt-dlp configurado para buscar formatos con audio y video integrados (evita videos mudos)
     ydl_opts = {
-        'format': 'best',
+        'format': 'best[ext=mp4]/best',  # Prioriza MP4 nativo para iOS
         'socket_timeout': 60,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Extraemos los datos sin descargar físicamente
-            info = ydl.extract_info(url, download=False)
+            info = yt_dlp.YoutubeDL({'socket_timeout': 60}).extract_info(url, download=False)
             
             title = info.get('title', 'Video sin título')
             duration_sec = info.get('duration', 0)
             duration_min = round(duration_sec / 60, 1)
             
-            # Buscamos un enlace directo de descarga/reproducción de la lista de formatos
-            direct_url = None
+            # Extraer URL directa asegurando compatibilidad móvil
+            direct_url = info.get('url')
+            
+            # Si el formato principal no da la URL directa, buscamos en los formatos disponibles uno con audio y video
             for f in info.get('formats', []):
-                # Buscamos formato con video y audio combinados o directo accesible
-                if f.get('url') and f.get('ext') == 'mp4' and f.get('height'):
+                if f.get('url') and f.get('ext') == 'mp4' and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
                     direct_url = f.get('url')
-                    if f.get('height') <= 720: # Preferiblemente 720p o menor para ligereza
+                    if f.get('height') and f.get('height') <= 720:
                         break
 
-            # Si no encontró un mp4 exacto, tomamos la URL principal del info
-            if not direct_url:
-                direct_url = info.get('url')
-
         if not direct_url:
-            await status_msg.edit_text("❌ No se pudo extraer un enlace directo para este video.")
+            await status_msg.edit_text("❌ No se pudo generar un enlace compatible.")
             return
 
-        # Mensaje con la información y el enlace directo limpio
+        # Respuesta estructurada para iPhone y Telegram
         response_text = (
-            f"🎬 **{title}**\n"
-            f"⏱ Duración: {duration_min} minutos\n\n"
-            f"🔗 **Enlace de reproducción/descarga directa:**\n{direct_url}"
+            f"🍏 **{title}**\n"
+            f"⏱ Duración: {duration_min} min\n\n"
+            f"📲 **Instrucciones para iPhone:**\n"
+            f"1. Abre el enlace en **Safari**.\n"
+            f"2. Mantén presionado el reproductor o usa el botón de descargas para guardarlo en tu carrete.\n\n"
+            f"🔗 **Enlace directo (Con Audio):**\n{direct_url}"
         )
 
         await status_msg.edit_text(response_text, disable_web_page_preview=False)
