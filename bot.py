@@ -46,10 +46,11 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video en la nube...")
 
-    # Configuración flexible para evitar errores de formatos no disponibles
+    # Configuración simplificada y robusta para evitar bloqueos de formatos de YouTube
     ydl_opts = {
-        'format': 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4] / bv+ba/b',
+        'format': 'best',
         'socket_timeout': 60,
+        'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
         'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
     }
 
@@ -64,14 +65,15 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             duration_sec = info.get('duration', 0)
             duration_min = round(duration_sec / 60, 1)
             
-            # Obtener el enlace directo asegurando compatibilidad general
+            # Obtener el enlace directo optimizado
             direct_url = info.get('url')
             
-            # Si hay formatos detallados, buscamos uno que tenga tanto video como audio integrados
-            for f in info.get('formats', []):
-                if f.get('url') and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
-                    direct_url = f.get('url')
-                    break
+            # Si viene en formato de lista, buscamos el mejor enlace disponible con codecs activos
+            if not direct_url and 'formats' in info:
+                for f in info.get('formats', []):
+                    if f.get('url') and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
+                        direct_url = f.get('url')
+                        break
 
         if not direct_url:
             await status_msg.edit_text("❌ No se pudo generar un enlace compatible para este video.")
