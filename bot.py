@@ -20,6 +20,11 @@ logging.basicConfig(
 # para saber cuándo es el "primer mensaje" de alguien.
 usuarios_conocidos = set()
 
+# Ruta opcional a un cookies.txt exportado del navegador (formato Netscape).
+# YouTube a veces exige "confirmar que no eres un bot" en servidores/nube;
+# pasarle cookies de una sesión real es la solución oficial de yt-dlp.
+COOKIES_FILE = os.getenv("YT_COOKIES_FILE")
+
 COMANDOS_TEXT = (
     "📖 Guía de Comandos Disponibles:\n"
     "• /start - Muestra este mensaje de bienvenida.\n"
@@ -70,13 +75,19 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     status_msg = await update.message.reply_text("⏳ Procesando enlaces de audio y video en la nube...")
 
-    # Configuración limpia basada en cliente iOS/Android sin requerir cookies
+    # Configuración basada en cliente iOS/Android
     ydl_opts = {
         'format': 'best',
         'socket_timeout': 60,
         'extractor_args': {'youtube': {'player_client': ['ios', 'android']}},
         'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     }
+
+    # Si hay un archivo de cookies configurado, se usa para evitar el bloqueo
+    # "Sign in to confirm you're not a bot" que YouTube aplica frecuentemente
+    # a IPs de servidores/nube.
+    if COOKIES_FILE and os.path.exists(COOKIES_FILE):
+        ydl_opts['cookiefile'] = COOKIES_FILE
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
